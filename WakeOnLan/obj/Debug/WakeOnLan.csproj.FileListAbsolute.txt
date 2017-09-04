@@ -1,7 +1,0 @@
-C:\git\mkobzar\WakeOnLan\WakeOnLan\bin\Debug\WakeOnLan.exe.config
-C:\git\mkobzar\WakeOnLan\WakeOnLan\bin\Debug\WakeOnLan.exe
-C:\git\mkobzar\WakeOnLan\WakeOnLan\bin\Debug\WakeOnLan.pdb
-C:\git\mkobzar\WakeOnLan\WakeOnLan\obj\Debug\WakeOnLan.csprojResolveAssemblyReference.cache
-C:\git\mkobzar\WakeOnLan\WakeOnLan\obj\Debug\WakeOnLan.csproj.CoreCompileInputs.cache
-C:\git\mkobzar\WakeOnLan\WakeOnLan\obj\Debug\WakeOnLan.exe
-C:\git\mkobzar\WakeOnLan\WakeOnLan\obj\Debug\WakeOnLan.pdb
