@@ -3,7 +3,9 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text.RegularExpressions;
+using Microsoft.Win32;
 
 namespace WakeOnLan
 {
@@ -11,10 +13,16 @@ namespace WakeOnLan
     {
         static void Main(string[] args)
         {
+            var saveArgs = true;
+            if (args.Length == 0)
+            {
+                args = GetPreviouslyUsedArgs();
+                saveArgs = false;
+            }
             const string usage = "WakeOnLan allows a computer to be turned on or awakened" +
-                        "\n\nWakeOnLan [MAC Address]" +
-                        "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask]" +
-                        "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]";
+                                 "\n\nWakeOnLan [MAC Address]" +
+                                 "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask]" +
+                                 "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]";
             try
             {
                 switch (args.Length)
@@ -26,6 +34,8 @@ namespace WakeOnLan
                             return;
                         }
                         WakeUp(args[0]);
+                        if (saveArgs)
+                            SaveArgs(args);
                         break;
                     case 3:
                     case 4:
@@ -34,6 +44,8 @@ namespace WakeOnLan
                             ushort.TryParse(args[3], out remotePort);
                         remotePort = remotePort == 0 ? (ushort) 7 : remotePort;
                         WakeUp(args[0], args[1], args[2], remotePort);
+                        if (saveArgs)
+                            SaveArgs(args);
                         break;
                     default:
                         Console.WriteLine("invalid arguments\n");
@@ -44,6 +56,57 @@ namespace WakeOnLan
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
+            }
+        }
+
+        private static string GetRegistrySubKeyString()
+        {
+            var company = ((AssemblyCompanyAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(),
+                typeof(AssemblyCompanyAttribute), false)).Company;
+            var product = ((AssemblyProductAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(),
+                typeof(AssemblyProductAttribute), false)).Product;
+            return string.IsNullOrEmpty(company) || string.IsNullOrEmpty(product)
+                ? null
+                : $"SOFTWARE\\{company}\\{product}";
+        }
+
+        private static void SaveArgs(string[] args)
+        {
+            var regSubStr = GetRegistrySubKeyString();
+            if (args == null || args.Length == 0 || string.IsNullOrEmpty(regSubStr))
+                return;
+            var arg = string.Join(" ", args);
+            try
+            {
+                var reg = Registry.CurrentUser.OpenSubKey(regSubStr, true);
+                if (reg == null)
+                {
+                    Registry.CurrentUser.CreateSubKey(regSubStr);
+                    reg = Registry.CurrentUser.OpenSubKey(regSubStr, true);
+                }
+                reg?.SetValue("args", arg, RegistryValueKind.String);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"SaveArgs({arg}) thrown exception [{e.Message}]");
+            }
+        }
+
+        private static string[] GetPreviouslyUsedArgs()
+        {
+            try
+            {
+                var regSubStr = GetRegistrySubKeyString();
+                if (string.IsNullOrEmpty(regSubStr))
+                    return new string[]{};
+                var reg = Registry.CurrentUser.OpenSubKey(regSubStr);
+                var v = reg?.GetValue("args");
+                return v?.ToString().Split(' ') ?? new string[] { };
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                    return new string[]{};
             }
         }
 
@@ -127,7 +190,7 @@ namespace WakeOnLan
                 datagram[6 + i * 6 + x] = (byte) Convert.ToInt32(macAddressStripped.Substring(x * 2, 2), 16);
 
             var broadcastAddress = address.GetBroadcastAddress(mask);
-            var r = client.Send(datagram, datagram.Length, broadcastAddress.ToString(), port);
+            client.Send(datagram, datagram.Length, broadcastAddress.ToString(), port);
         }
     }
 
