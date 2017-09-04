@@ -22,7 +22,9 @@ namespace WakeOnLan
             const string usage = "WakeOnLan allows a computer to be turned on or awakened" +
                                  "\n\nWakeOnLan [MAC Address]" +
                                  "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask]" +
-                                 "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]";
+                                 "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]" +
+                                 "\n\n if you may use thos arguments once, and next time they will be reused, so next time you could use just"+
+                                 "\nWakeOnLan";
             try
             {
                 switch (args.Length)
@@ -59,6 +61,10 @@ namespace WakeOnLan
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         private static string GetRegistrySubKeyString()
         {
             var company = ((AssemblyCompanyAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(),
@@ -70,6 +76,10 @@ namespace WakeOnLan
                 : $"SOFTWARE\\{company}\\{product}";
         }
 
+        /// <summary>
+        /// Save currently used arguments
+        /// </summary>
+        /// <param name="args"></param>
         private static void SaveArgs(string[] args)
         {
             var regSubStr = GetRegistrySubKeyString();
@@ -92,6 +102,10 @@ namespace WakeOnLan
             }
         }
 
+        /// <summary>
+        /// Get Previously Used Argumets
+        /// </summary>
+        /// <returns></returns>
         private static string[] GetPreviouslyUsedArgs()
         {
             try
