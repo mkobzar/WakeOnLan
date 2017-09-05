@@ -23,7 +23,7 @@ namespace WakeOnLan
                                  "\n\nWakeOnLan [MAC Address]" +
                                  "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask]" +
                                  "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]" +
-                                 "\n\n if you may use thos arguments once, and next time they will be reused, so next time you could use just"+
+                                 "\n\n if you may use thos arguments once, and next time they will be reused, so next time you could use just" +
                                  "\nWakeOnLan";
             try
             {
@@ -112,7 +112,7 @@ namespace WakeOnLan
             {
                 var regSubStr = GetRegistrySubKeyString();
                 if (string.IsNullOrEmpty(regSubStr))
-                    return new string[]{};
+                    return new string[] { };
                 var reg = Registry.CurrentUser.OpenSubKey(regSubStr);
                 var v = reg?.GetValue("args");
                 return v?.ToString().Split(' ') ?? new string[] { };
@@ -120,7 +120,7 @@ namespace WakeOnLan
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                    return new string[]{};
+                return new string[] { };
             }
         }
 
@@ -130,42 +130,37 @@ namespace WakeOnLan
         /// <param name="macAddress">MAC Address</param>
         /// <param name="port">Port</param>
         [Obsolete]
-        public static void WakeUp(string macAddress, int port)
+        // ReSharper disable once UnusedMember.Local
+        private static void WakeUp(string macAddress, int port)
         {
+            var macAddressStripped = Regex.Replace(macAddress, @"[^0-9A-Fa-f]", "");
+            if (macAddressStripped.Length != 12)
+                throw new ArgumentException($"{macAddress} is incorrect MAC address");
+
             var client = new UdpClient();
             client.Connect(new IPAddress(0xffffffff), port);
+            var datagram = GetDatagram(macAddressStripped);
+            client.Send(datagram, datagram.Length);
+        }
 
+        /// <summary>
+        /// Covert mac address to magic packet
+        /// </summary>
+        /// <param name="macAddress"></param>
+        /// <returns>Datagram</returns>
+        private static byte[] GetDatagram(string macAddress)
+        {
             var datagram = new byte[102];
             for (var i = 0; i <= 5; i++)
             {
                 datagram[i] = 0xff;
             }
 
-            var macAddressStripped = Regex.Replace(macAddress, @"[^0-9A-Fa-f]", "");
-            if (macAddressStripped.Length != 12)
-                throw new ArgumentException($"{macAddress} is incorrect MAC address");
-
             const int start = 6;
             for (var i = 0; i < 16; i++)
             for (var x = 0; x < 6; x++)
-                datagram[start + i * 6 + x] = (byte) Convert.ToInt32(macAddressStripped.Substring(x * 2, 2), 16);
-
-            client.Send(datagram, datagram.Length);
-        }
-
-        /// <summary>
-        /// awake by mac address
-        /// </summary>
-        /// <param name="macAddress">MAC Address</param>
-        public static void WakeUp(string macAddress)
-        {
-            NetworkInterface.GetAllNetworkInterfaces()
-                .Where(x => x.OperationalStatus == OperationalStatus.Up &&
-                            x.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-                .SelectMany(x => x.GetIPProperties().UnicastAddresses)
-                .Where(x => x.IsDnsEligible)
-                .ToList()
-                .ForEach(x => WakeUp(macAddress, x.Address.ToString(), x.IPv4Mask.ToString(), 7));
+                datagram[start + i * 6 + x] = (byte) Convert.ToInt32(macAddress.Substring(x * 2, 2), 16);
+            return datagram;
         }
 
         /// <summary>
@@ -175,7 +170,7 @@ namespace WakeOnLan
         /// <param name="ipAddress">IPv4 Address</param>
         /// <param name="subnetMask">Subnet Mask</param>
         /// <param name="port">Port Number</param>
-        public static void WakeUp(string macAddress, string ipAddress, string subnetMask, int port)
+        private static void WakeUp(string macAddress, string ipAddress, string subnetMask, int port)
         {
             if (port < ushort.MinValue || port > ushort.MaxValue)
                 throw new ArgumentException($"{port} is incorrect Port number");
@@ -193,18 +188,24 @@ namespace WakeOnLan
 
 
             var client = new UdpClient();
-            var datagram = new byte[102];
-            for (var i = 0; i <= 5; i++)
-            {
-                datagram[i] = 0xff;
-            }
-
-            for (var i = 0; i < 16; i++)
-            for (var x = 0; x < 6; x++)
-                datagram[6 + i * 6 + x] = (byte) Convert.ToInt32(macAddressStripped.Substring(x * 2, 2), 16);
-
+            var datagram = GetDatagram(macAddressStripped);
             var broadcastAddress = address.GetBroadcastAddress(mask);
             client.Send(datagram, datagram.Length, broadcastAddress.ToString(), port);
+        }
+
+        /// <summary>
+        /// awake by mac address
+        /// </summary>
+        /// <param name="macAddress">MAC Address</param>
+        private static void WakeUp(string macAddress)
+        {
+            NetworkInterface.GetAllNetworkInterfaces()
+                .Where(x => x.OperationalStatus == OperationalStatus.Up &&
+                            x.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .SelectMany(x => x.GetIPProperties().UnicastAddresses)
+                .Where(x => x.IsDnsEligible)
+                .ToList()
+                .ForEach(x => WakeUp(macAddress, x.Address.ToString(), x.IPv4Mask.ToString(), 7));
         }
     }
 
