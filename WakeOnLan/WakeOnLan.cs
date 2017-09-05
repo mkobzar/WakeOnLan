@@ -151,15 +151,15 @@ namespace WakeOnLan
         private static byte[] GetDatagram(string macAddress)
         {
             var datagram = new byte[102];
-            for (var i = 0; i <= 5; i++)
+            const int z = 6;
+            for (var i = 0; i < z; i++)
             {
                 datagram[i] = 0xff;
             }
 
-            const int start = 6;
             for (var i = 0; i < 16; i++)
-            for (var x = 0; x < 6; x++)
-                datagram[start + i * 6 + x] = (byte) Convert.ToInt32(macAddress.Substring(x * 2, 2), 16);
+            for (var x = 0; x < z; x++)
+                datagram[z + i * z + x] = (byte) Convert.ToInt32(macAddress.Substring(x * 2, 2), 16);
             return datagram;
         }
 
@@ -185,7 +185,6 @@ namespace WakeOnLan
             var macAddressStripped = Regex.Replace(macAddress, @"[^0-9A-Fa-f]", "");
             if (macAddressStripped.Length != 12)
                 throw new ArgumentException($"{macAddress} is incorrect MAC address");
-
 
             var client = new UdpClient();
             var datagram = GetDatagram(macAddressStripped);
