@@ -124,27 +124,9 @@ namespace WakeOnLan
             }
         }
 
-        /// <summary>
-        /// This method used and suggested everywhere, but for some reason it never work for me. Don't use it!
-        /// </summary>
-        /// <param name="macAddress">MAC Address</param>
-        /// <param name="port">Port</param>
-        [Obsolete]
-        // ReSharper disable once UnusedMember.Local
-        private static void WakeUp(string macAddress, int port)
-        {
-            var macAddressStripped = Regex.Replace(macAddress, @"[^0-9A-Fa-f]", "");
-            if (macAddressStripped.Length != 12)
-                throw new ArgumentException($"{macAddress} is incorrect MAC address");
-
-            var client = new UdpClient();
-            client.Connect(new IPAddress(0xffffffff), port);
-            var datagram = GetDatagram(macAddressStripped);
-            client.Send(datagram, datagram.Length);
-        }
 
         /// <summary>
-        /// Covert mac address to magic packet
+        /// Convert mac address to magic packet
         /// </summary>
         /// <param name="macAddress"></param>
         /// <returns>Datagram</returns>
@@ -157,9 +139,13 @@ namespace WakeOnLan
                 datagram[i] = 0xff;
             }
 
+            //Console.WriteLine("datagram[z + i * z + x] = (byte)Convert.ToInt32(macAddress.Substring(x * 2, 2), 16)");
             for (var i = 0; i < 16; i++)
-            for (var x = 0; x < z; x++)
-                datagram[z + i * z + x] = (byte) Convert.ToInt32(macAddress.Substring(x * 2, 2), 16);
+                for (var x = 0; x < z; x++)
+                {
+                    //Console.WriteLine($"datagram[z{z} + i{i} * z{z} + x{x} = {z + i * z + x}] = {(byte)Convert.ToInt32(macAddress.Substring(x * 2, 2), 16)}");
+                    datagram[z + i * z + x] = (byte)Convert.ToInt32(macAddress.Substring(x * 2, 2), 16);
+                }
             return datagram;
         }
 
