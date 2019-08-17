@@ -3,9 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Text.RegularExpressions;
-using Microsoft.Win32;
 
 namespace WakeOnLan
 {
@@ -13,18 +11,10 @@ namespace WakeOnLan
     {
         static void Main(string[] args)
         {
-            var saveArgs = true;
-            if (args.Length == 0)
-            {
-                args = GetPreviouslyUsedArgs();
-                saveArgs = false;
-            }
-            const string usage = "WakeOnLan allows a computer to be turned on or awakened" +
+            const string usage = "WakeOnLan allows a computer to be turned on or awakened. Usage:" +
                                  "\n\nWakeOnLan [MAC Address]" +
                                  "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask]" +
-                                 "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]" +
-                                 "\n\n if you may use thos arguments once, and next time they will be reused, so next time you could use just" +
-                                 "\nWakeOnLan";
+                                 "\nWakeOnLan [MAC Address] [IPv4 Address] [Subnet Mask] [Port]";
             try
             {
                 switch (args.Length)
@@ -36,18 +26,14 @@ namespace WakeOnLan
                             return;
                         }
                         WakeUp(args[0]);
-                        if (saveArgs)
-                            SaveArgs(args);
                         break;
                     case 3:
                     case 4:
                         ushort remotePort = 7;
                         if (args.Length > 3)
                             ushort.TryParse(args[3], out remotePort);
-                        remotePort = remotePort == 0 ? (ushort) 7 : remotePort;
+                        remotePort = remotePort == 0 ? (ushort)7 : remotePort;
                         WakeUp(args[0], args[1], args[2], remotePort);
-                        if (saveArgs)
-                            SaveArgs(args);
                         break;
                     default:
                         Console.WriteLine("invalid arguments\n");
@@ -61,68 +47,6 @@ namespace WakeOnLan
             }
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        private static string GetRegistrySubKeyString()
-        {
-            var company = ((AssemblyCompanyAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(),
-                typeof(AssemblyCompanyAttribute), false)).Company;
-            var product = ((AssemblyProductAttribute) Attribute.GetCustomAttribute(Assembly.GetExecutingAssembly(),
-                typeof(AssemblyProductAttribute), false)).Product;
-            return string.IsNullOrEmpty(company) || string.IsNullOrEmpty(product)
-                ? null
-                : $"SOFTWARE\\{company}\\{product}";
-        }
-
-        /// <summary>
-        /// Save currently used arguments
-        /// </summary>
-        /// <param name="args"></param>
-        private static void SaveArgs(string[] args)
-        {
-            var regSubStr = GetRegistrySubKeyString();
-            if (args == null || args.Length == 0 || string.IsNullOrEmpty(regSubStr))
-                return;
-            var arg = string.Join(" ", args);
-            try
-            {
-                var reg = Registry.CurrentUser.OpenSubKey(regSubStr, true);
-                if (reg == null)
-                {
-                    Registry.CurrentUser.CreateSubKey(regSubStr);
-                    reg = Registry.CurrentUser.OpenSubKey(regSubStr, true);
-                }
-                reg?.SetValue("args", arg, RegistryValueKind.String);
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"SaveArgs({arg}) thrown exception [{e.Message}]");
-            }
-        }
-
-        /// <summary>
-        /// Get Previously Used Argumets
-        /// </summary>
-        /// <returns></returns>
-        private static string[] GetPreviouslyUsedArgs()
-        {
-            try
-            {
-                var regSubStr = GetRegistrySubKeyString();
-                if (string.IsNullOrEmpty(regSubStr))
-                    return new string[] { };
-                var reg = Registry.CurrentUser.OpenSubKey(regSubStr);
-                var v = reg?.GetValue("args");
-                return v?.ToString().Split(' ') ?? new string[] { };
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                return new string[] { };
-            }
-        }
 
 
         /// <summary>
@@ -133,19 +57,18 @@ namespace WakeOnLan
         private static byte[] GetDatagram(string macAddress)
         {
             var datagram = new byte[102];
-            const int z = 6;
+            const byte z = 6;
             for (var i = 0; i < z; i++)
             {
                 datagram[i] = 0xff;
             }
 
-            //Console.WriteLine("datagram[z + i * z + x] = (byte)Convert.ToInt32(macAddress.Substring(x * 2, 2), 16)");
             for (var i = 0; i < 16; i++)
                 for (var x = 0; x < z; x++)
                 {
-                    //Console.WriteLine($"datagram[z{z} + i{i} * z{z} + x{x} = {z + i * z + x}] = {(byte)Convert.ToInt32(macAddress.Substring(x * 2, 2), 16)}");
                     datagram[z + i * z + x] = (byte)Convert.ToInt32(macAddress.Substring(x * 2, 2), 16);
                 }
+
             return datagram;
         }
 
@@ -156,11 +79,8 @@ namespace WakeOnLan
         /// <param name="ipAddress">IPv4 Address</param>
         /// <param name="subnetMask">Subnet Mask</param>
         /// <param name="port">Port Number</param>
-        private static void WakeUp(string macAddress, string ipAddress, string subnetMask, int port)
+        private static void WakeUp(string macAddress, string ipAddress, string subnetMask, ushort port)
         {
-            if (port < ushort.MinValue || port > ushort.MaxValue)
-                throw new ArgumentException($"{port} is incorrect Port number");
-
             IPAddress address, mask;
             if (!IPAddress.TryParse(ipAddress, out address))
                 throw new ArgumentException($"{ipAddress} is invalid IPv4 Address");
@@ -215,7 +135,7 @@ namespace WakeOnLan
             var broadcastAddress = new byte[ipAdressBytes.Length];
             for (var i = 0; i < broadcastAddress.Length; i++)
             {
-                broadcastAddress[i] = (byte) (ipAdressBytes[i] | (subnetMaskBytes[i] ^ 255));
+                broadcastAddress[i] = (byte)(ipAdressBytes[i] | (subnetMaskBytes[i] ^ 255));
             }
             return new IPAddress(broadcastAddress);
         }
