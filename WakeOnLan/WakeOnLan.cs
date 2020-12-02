@@ -83,10 +83,20 @@ namespace WakeOnLan
         {
             IPAddress address, mask;
             if (!IPAddress.TryParse(ipAddress, out address))
-                throw new ArgumentException($"{ipAddress} is invalid IPv4 Address");
+                throw new ArgumentException($"{ipAddress} is invalid IP Address");
+           
+            if(address.AddressFamily!=AddressFamily.InterNetwork)
+                throw new ArgumentException($"{ipAddress} is not IPv4 Address");
 
             if (!IPAddress.TryParse(subnetMask, out mask))
                 throw new ArgumentException($"{subnetMask} is invalid Subnet Mask value");
+
+            if (address.GetAddressBytes().Count() != mask.GetAddressBytes().Count())
+            {
+                Console.WriteLine($"address[{address}] Bytes Count[{address.GetAddressBytes().Count()}] != mask[{mask}] Bytes Count[{mask.GetAddressBytes().Count()}].");
+                Console.WriteLine("This address/mask will be skipped for waking up");
+                return;
+            }
 
             var macAddressStripped = Regex.Replace(macAddress, @"[^0-9A-Fa-f]", "");
             if (macAddressStripped.Length != 12)
@@ -96,6 +106,7 @@ namespace WakeOnLan
             var datagram = GetDatagram(macAddressStripped);
             var broadcastAddress = address.GetBroadcastAddress(mask);
             client.Send(datagram, datagram.Length, broadcastAddress.ToString(), port);
+            Console.WriteLine($"WakeUp signal sent to mac address[{macAddress}], using IP[{ipAddress}, subnet mask[{subnetMask}] and port[{port}]");
         }
 
         /// <summary>
@@ -108,7 +119,8 @@ namespace WakeOnLan
                 .Where(x => x.OperationalStatus == OperationalStatus.Up &&
                             x.NetworkInterfaceType != NetworkInterfaceType.Loopback)
                 .SelectMany(x => x.GetIPProperties().UnicastAddresses)
-                .Where(x => x.IsDnsEligible)
+                //.Where(x => x.IsDnsEligible)
+                .Where(x => x.IsDnsEligible && x.Address.AddressFamily == AddressFamily.InterNetwork)
                 .ToList()
                 .ForEach(x => WakeUp(macAddress, x.Address.ToString(), x.IPv4Mask.ToString(), 7));
         }
